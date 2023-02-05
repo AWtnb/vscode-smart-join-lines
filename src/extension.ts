@@ -4,8 +4,8 @@ const isASCII = (s: string): boolean => {
   return Boolean(s.match(/[\x00-\x7f]/));
 };
 
-const joinLines = (s: string, linebreak: string): string => {
-  return s.split(linebreak).reduce((accum, cur) => {
+const joinLines = (ss: string[]): string => {
+  return ss.reduce((accum, cur) => {
     if (accum.length < 1) {
       return cur.trimEnd();
     }
@@ -21,19 +21,29 @@ const joinLines = (s: string, linebreak: string): string => {
   }, "");
 };
 
+const getRange = (editor: vscode.TextEditor, sel: vscode.Selection): vscode.Range => {
+  const cursor = sel.active;
+  const start = new vscode.Position(cursor.line, 0);
+  const endLine = Math.min(editor.document.lineCount - 1, cursor.line + 1);
+  const end = new vscode.Position(endLine, editor.document.lineAt(endLine).text.length);
+  return new vscode.Range(start, end);
+};
+
 const formatSelections = (editor: vscode.TextEditor) => {
   editor.edit((editBuilder) => {
     editor.selections
-      .filter((sel) => !sel.isEmpty)
-      .forEach((sel) => {
+      .map((sel) => {
         if (sel.isSingleLine) {
-          return;
+          return getRange(editor, sel);
         }
-        const text = editor.document.getText(sel);
+        return sel;
+      })
+      .forEach((target) => {
+        const text = editor.document.getText(target);
         const linebreak = editor.document.eol == 1 ? "\n" : "\r\n";
-        const newText = joinLines(text, linebreak);
+        const newText = joinLines(text.split(linebreak));
         if (text != newText) {
-          editBuilder.replace(sel, newText);
+          editBuilder.replace(target, newText);
         }
       });
   });

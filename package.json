@@ -27,7 +27,8 @@
     "commands": [
       {
         "command": "smartJoinLines.join",
-        "title": "smart-join-lines: join"
+        "title": "join",
+        "category": "smart-join-lines"
       }
     ]
   },

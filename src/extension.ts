@@ -21,7 +21,7 @@ const joinLines = (ss: string[]): string => {
   }, "");
 };
 
-const getRange = (editor: vscode.TextEditor, sel: vscode.Selection): vscode.Range => {
+const toLineRange = (editor: vscode.TextEditor, sel: vscode.Selection): vscode.Range => {
   const cursor = sel.active;
   const start = new vscode.Position(cursor.line, 0);
   const endLine = Math.min(editor.document.lineCount - 1, cursor.line + 1);
@@ -29,23 +29,48 @@ const getRange = (editor: vscode.TextEditor, sel: vscode.Selection): vscode.Rang
   return new vscode.Range(start, end);
 };
 
+const getUniqueRanges = (ranges: vscode.Range[]): vscode.Range[] => {
+  const sortedRanges = ranges.sort((a, b) => {
+    if (a.start.isBefore(b.start)) {
+      return -1;
+    }
+    if (a.start.isAfter(b.start)) {
+      return 1;
+    }
+    return 0;
+  });
+  const stack: vscode.Range[] = [];
+  for (let i = 0; i < sortedRanges.length; i++) {
+    const range = sortedRanges[i];
+    if (i == 0) {
+      stack.push(range);
+      continue;
+    }
+    const last = sortedRanges[i - 1];
+    if (range.intersection(last)) {
+      continue;
+    }
+    stack.push(range);
+  }
+  return stack;
+};
+
 const formatSelections = (editor: vscode.TextEditor) => {
   editor.edit((editBuilder) => {
-    editor.selections
-      .map((sel) => {
-        if (sel.isSingleLine) {
-          return getRange(editor, sel);
-        }
-        return sel;
-      })
-      .forEach((target) => {
-        const text = editor.document.getText(target);
-        const linebreak = editor.document.eol == 1 ? "\n" : "\r\n";
-        const newText = joinLines(text.split(linebreak));
-        if (text != newText) {
-          editBuilder.replace(target, newText);
-        }
-      });
+    const sels = editor.selections.map((sel) => {
+      if (sel.isSingleLine) {
+        return toLineRange(editor, sel);
+      }
+      return sel;
+    });
+    getUniqueRanges(sels).forEach((target) => {
+      const text = editor.document.getText(target);
+      const linebreak = editor.document.eol == 1 ? "\n" : "\r\n";
+      const newText = joinLines(text.split(linebreak));
+      if (text != newText) {
+        editBuilder.replace(target, newText);
+      }
+    });
   });
 };
 

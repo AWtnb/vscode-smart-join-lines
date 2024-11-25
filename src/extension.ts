@@ -28,8 +28,8 @@ const joinLines = (ss: string[]): string => {
 const toLineRange = (editor: vscode.TextEditor, sel: vscode.Selection): vscode.Range => {
   const cursor = sel.active;
   const start = new vscode.Position(cursor.line, 0);
-  const endLine = Math.min(editor.document.lineCount - 1, cursor.line + 1);
-  const end = new vscode.Position(endLine, editor.document.lineAt(endLine).text.length);
+  const nextLine = Math.min(cursor.line + 1, editor.document.lineCount - 1);
+  const end = new vscode.Position(nextLine, editor.document.lineAt(nextLine).text.length);
   return new vscode.Range(start, end);
 };
 
@@ -60,22 +60,22 @@ const getUniqueRanges = (ranges: vscode.Range[]): vscode.Range[] => {
 };
 
 const formatSelections = (editor: vscode.TextEditor) => {
-  editor.edit((editBuilder) => {
-    const sels = editor.selections.map((sel) => {
-      if (sel.isSingleLine) {
-        return toLineRange(editor, sel);
-      }
-      return sel;
-    });
-    getUniqueRanges(sels).forEach((target) => {
-      const text = editor.document.getText(target);
-      const linebreak = editor.document.eol == 1 ? "\n" : "\r\n";
-      const newText = joinLines(text.split(linebreak));
-      if (text != newText) {
-        editBuilder.replace(target, newText);
-      }
-    });
+  const linebreak = editor.document.eol == vscode.EndOfLine.LF ? "\n" : "\r\n";
+  const workspaceEdit = new vscode.WorkspaceEdit();
+
+  const sels: vscode.Range[] = editor.selections.map((sel) => {
+    if (sel.isSingleLine) {
+      return toLineRange(editor, sel);
+    }
+    return sel;
   });
+
+  getUniqueRanges(sels).forEach((range) => {
+    const text = editor.document.getText(range);
+    workspaceEdit.replace(editor.document.uri, range, joinLines(text.split(linebreak)));
+  });
+
+  vscode.workspace.applyEdit(workspaceEdit);
 };
 
 export function activate(context: vscode.ExtensionContext) {

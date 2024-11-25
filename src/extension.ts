@@ -5,19 +5,23 @@ const isASCII = (s: string): boolean => {
 };
 
 const joinLines = (ss: string[]): string => {
-  return ss.reduce((accum, cur) => {
-    if (accum.length < 1) {
+  return ss.reduce((joined: string, cur: string) => {
+    if (joined.length < 1) {
       return cur.trimEnd();
     }
     const line = cur.trim();
-    const accumTail = accum.slice(-1);
-    if (accumTail == "-") {
-      return accum.substring(0, accum.length - 1) + line;
+    const lastChar = joined.slice(-1);
+    if (lastChar == "-") {
+      const l = joined.substring(0, joined.length - 1);
+      if (l.slice(-1).match(/\d/)) {
+        return joined + line;
+      }
+      return l + line;
     }
-    if (isASCII(accumTail) || isASCII(line.charAt(0))) {
-      return accum + " " + line;
+    if (isASCII(lastChar) || isASCII(line.charAt(0))) {
+      return joined + " " + line;
     }
-    return accum + line;
+    return joined + line;
   }, "");
 };
 
